@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: stand-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stand
+      POSTGRES_PASSWORD: stand_dev_password
+      POSTGRES_DB: stand
+    ports:
+      - "5433:5432"
+    volumes:
+      - stand_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  stand_postgres_data:

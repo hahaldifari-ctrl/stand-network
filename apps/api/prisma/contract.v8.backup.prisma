@@ -1,0 +1,416 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum RoleName {
+  USER
+  VOLUNTEER
+  PARTNER_MEMBER
+  PARTNER_ADMIN
+  CASE_REVIEWER
+  RESPONSE_COORDINATOR
+  FINANCE_ADMIN
+  CONTENT_ADMIN
+  SUPPORT_ADMIN
+  SUPER_ADMIN
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REMOVED
+}
+
+enum OrganizationType {
+  CHURCH
+  MINISTRY
+  NGO
+  RELIEF_ORGANIZATION
+  COMMUNITY_ORGANIZATION
+  PROFESSIONAL_ORGANIZATION
+  RESEARCH_ORGANIZATION
+  OTHER
+}
+
+enum OrganizationStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum RegionType {
+  STATE
+  PROVINCE
+  TERRITORY
+  REGION
+  OTHER
+}
+
+enum AreaType {
+  DISTRICT
+  LOCAL_GOVERNMENT_AREA
+  MUNICIPALITY
+  COMMUNITY
+  OTHER
+}
+
+enum CaseStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  VERIFIED
+  PUBLISHED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  REJECTED
+}
+
+enum CaseVisibility {
+  PUBLIC
+  RESTRICTED
+  INTERNAL
+}
+
+enum CaseSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AffectedGroupType {
+  INDIVIDUAL
+  FAMILY
+  CHURCH
+  COMMUNITY
+  MULTIPLE_FAMILIES
+  OTHER
+}
+
+enum VerificationStatus {
+  PENDING
+  IN_PROGRESS
+  VERIFIED
+  REJECTED
+  NEEDS_MORE_INFORMATION
+}
+
+enum NeedType {
+  FOOD
+  SHELTER
+  MEDICAL
+  EDUCATION
+  CLOTHING
+  TRANSPORT
+  LIVELIHOOD
+  REBUILDING
+  TRAUMA_SUPPORT
+  EMERGENCY_FINANCIAL_SUPPORT
+  OTHER
+}
+
+enum NeedStatus {
+  OPEN
+  PARTIALLY_MET
+  MET
+  CANCELLED
+}
+
+enum NeedPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ResponseStatus {
+  PLANNED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id                    String    @id @default(uuid()) @db.Uuid
+  email                 String?   @unique
+  phone                 String?   @unique
+  name                  String
+  status                UserStatus @default(ACTIVE)
+  emailVerified         Boolean   @default(false)
+  phoneVerified         Boolean   @default(false)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  roles                 UserRole[]
+  organizationMemberships OrganizationMembership[]
+  verifications         CaseVerification[] @relation("VerificationReviewer")
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Role {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        RoleName     @unique
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String       @id @default(uuid()) @db.Uuid
+  code        String       @unique
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  roles       RolePermission[]
+}
+
+model UserRole {
+  userId     String   @db.Uuid
+  roleId     String   @db.Uuid
+  assignedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+model RolePermission {
+  roleId       String @db.Uuid
+  permissionId String @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+}
+
+model Organization {
+  id          String             @id @default(uuid()) @db.Uuid
+  name        String
+  type        OrganizationType
+  status      OrganizationStatus @default(PENDING)
+  description String?
+  countryId   String?            @db.Uuid
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  country     Country?                   @relation(fields: [countryId], references: [id])
+  memberships OrganizationMembership[]
+  responses   ResponsePartner[]
+
+  @@index([type])
+  @@index([status])
+  @@index([countryId])
+}
+
+model OrganizationMembership {
+  userId         String           @db.Uuid
+  organizationId String           @db.Uuid
+  status         MembershipStatus @default(PENDING)
+  joinedAt       DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, organizationId])
+  @@index([organizationId, status])
+}
+
+model Country {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  regions       Region[]
+  areas         Area[]
+  organizations Organization[]
+  cases         Case[]
+}
+
+model Region {
+  id        String     @id @default(uuid()) @db.Uuid
+  countryId String     @db.Uuid
+  name      String
+  type      RegionType
+  code      String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  areas   Area[]
+  cases   Case[]
+
+  @@unique([countryId, name])
+  @@index([countryId])
+}
+
+model Area {
+  id        String   @id @default(uuid()) @db.Uuid
+  countryId String   @db.Uuid
+  regionId  String?  @db.Uuid
+  name      String
+  type      AreaType
+  code      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  region  Region? @relation(fields: [regionId], references: [id])
+  cases   Case[]
+
+  @@unique([countryId, name])
+  @@index([countryId])
+  @@index([regionId])
+}
+
+model Case {
+  id                  String          @id @default(uuid()) @db.Uuid
+  caseNumber          String          @unique
+  title               String
+  summary             String?
+  status              CaseStatus      @default(DRAFT)
+  severity            CaseSeverity    @default(MEDIUM)
+  visibility          CaseVisibility  @default(INTERNAL)
+  countryId           String          @db.Uuid
+  regionId            String?         @db.Uuid
+  areaId              String?         @db.Uuid
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  publishedAt         DateTime?
+  resolvedAt          DateTime?
+
+  country        Country            @relation(fields: [countryId], references: [id])
+  region         Region?            @relation(fields: [regionId], references: [id])
+  area           Area?              @relation(fields: [areaId], references: [id])
+  affectedGroups AffectedGroup[]
+  verifications  CaseVerification[]
+  needs          Need[]
+  responses      Response[]
+
+  @@index([status])
+  @@index([severity])
+  @@index([visibility])
+  @@index([countryId])
+  @@index([regionId])
+  @@index([areaId])
+  @@index([createdAt])
+}
+
+model AffectedGroup {
+  id                  String            @id @default(uuid()) @db.Uuid
+  caseId              String            @db.Uuid
+  type                AffectedGroupType
+  estimatedPeople     Int?
+  estimatedFamilies   Int?
+  estimatedAdults     Int?
+  estimatedChildren   Int?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+}
+
+model CaseVerification {
+  id              String             @id @default(uuid()) @db.Uuid
+  caseId          String             @db.Uuid
+  reviewerId      String?            @db.Uuid
+  status          VerificationStatus @default(PENDING)
+  source          String?
+  evidenceRef     String?
+  notes           String?
+  verifiedAt      DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  case     Case  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("VerificationReviewer", fields: [reviewerId], references: [id])
+
+  @@index([caseId])
+  @@index([reviewerId])
+  @@index([status])
+}
+
+model Need {
+  id          String       @id @default(uuid()) @db.Uuid
+  caseId      String       @db.Uuid
+  type        NeedType
+  description String?
+  status      NeedStatus   @default(OPEN)
+  priority    NeedPriority @default(MEDIUM)
+  quantity    Decimal?     @db.Decimal(18, 2)
+  unit        String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  fulfilledAt DateTime?
+
+  case      Case       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  responses Response[]
+
+  @@index([caseId])
+  @@index([status])
+  @@index([priority])
+}
+
+model Response {
+  id          String         @id @default(uuid()) @db.Uuid
+  caseId      String         @db.Uuid
+  needId      String?        @db.Uuid
+  title       String
+  description String?
+  status      ResponseStatus @default(PLANNED)
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  case     Case             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  need     Need?            @relation(fields: [needId], references: [id])
+  partners ResponsePartner[]
+
+  @@index([caseId])
+  @@index([needId])
+  @@index([status])
+}
+
+model ResponsePartner {
+  responseId     String @db.Uuid
+  organizationId String @db.Uuid
+  joinedAt       DateTime @default(now())
+
+  response     Response     @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([responseId, organizationId])
+  @@index([organizationId])
+}
