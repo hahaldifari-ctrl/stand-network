@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: stand_dev_password
       POSTGRES_DB: stand
     ports:
-      - "5433:5432"
+      - "55432:5432"
     volumes:
       - stand_postgres_data:/var/lib/postgresql/data
 
