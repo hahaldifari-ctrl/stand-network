@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+﻿import dotenv from 'dotenv';
 import { resolve } from 'path';
 import { PrismaPg } from '@prisma/adapter-pg';
 import {
@@ -27,7 +27,7 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
-  console.log('🌱 Seeding STAND Network database...');
+  console.log('ðŸŒ± Seeding STAND Network database...');
 
   await prisma.response.deleteMany();
   await prisma.prayer.deleteMany();
@@ -65,7 +65,7 @@ async function main() {
       description:
         'A community-based organization supporting displaced and vulnerable Christian families in Plateau State.',
       location: 'Jos, Plateau State, Nigeria',
-      website: 'https://example.org/hope-for-jos',
+      website: null,
       ownerId: verifier.id,
     },
   });
@@ -76,7 +76,7 @@ async function main() {
       description:
         'A relief network supporting vulnerable Christian communities across Northern Nigeria.',
       location: 'Kaduna, Kaduna State, Nigeria',
-      website: 'https://example.org/northern-hope',
+      website: null,
       ownerId: admin.id,
     },
   });
@@ -157,14 +157,14 @@ async function main() {
     },
   });
 
-  console.log(`✅ Created ${needs.length} needs`);
-  console.log('✅ Created organizations, users, and prayer activity');
-  console.log('🌱 STAND Network database seeded successfully.');
+  console.log(`âœ… Created ${needs.length} needs`);
+  console.log('âœ… Created organizations, users, and prayer activity');
+  console.log('ðŸŒ± STAND Network database seeded successfully.');
 }
 
 main()
   .catch((error) => {
-    console.error('❌ Seed failed:', error);
+    console.error('âŒ Seed failed:', error);
     process.exit(1);
   })
   .finally(async () => {

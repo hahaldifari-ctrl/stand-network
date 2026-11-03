@@ -16,11 +16,19 @@ export class CreateIncidentDto {
   description!: string;
 
   @IsString()
-  location!: string;
+  state!: string;
+
+  @IsOptional()
+  @IsString()
+  lga?: string;
 
   @IsOptional()
   @IsString()
   community?: string;
+
+  @IsOptional()
+  @IsString()
+  region?: string;
 
   @IsOptional()
   @IsDateString()

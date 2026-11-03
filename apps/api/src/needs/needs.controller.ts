@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Controller,
   Get,
@@ -14,6 +14,7 @@ import { NeedsService } from './needs.service';
 import { CreateNeedDto } from './dto/create-need.dto';
 import { CreatePrayerDto } from './dto/create-prayer.dto';
 import { CreateResponseDto } from './dto/create-response.dto';
+import { UpdateResponseStatusDto } from './dto/update-response-status.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -42,6 +43,22 @@ export class NeedsController {
     return this.needsService.findPending();
   }
 
+  @Get('responses')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.VERIFIER)
+  findResponses() {
+    return this.needsService.findResponses();
+  }
+
+  @Patch('responses/:id/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.VERIFIER)
+  updateResponseStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateResponseStatusDto,
+  ) {
+    return this.needsService.updateResponseStatus(id, dto.status);
+  }
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.needsService.findOne(id);
@@ -97,3 +114,4 @@ export class NeedsController {
     return this.needsService.reject(id);
   }
 }
+

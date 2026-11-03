@@ -1,10 +1,34 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrganizationDto } from './create-organization.dto';
 
 @Injectable()
 export class OrganizationsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async findAll() {
+    return this.prisma.organization.findMany({
+      orderBy: {
+        name: 'asc',
+      },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+        _count: {
+          select: {
+            needs: true,
+            responses: true,
+          },
+        },
+      },
+    });
+  }
 
   async create(dto: CreateOrganizationDto, ownerId: string) {
     return this.prisma.organization.create({

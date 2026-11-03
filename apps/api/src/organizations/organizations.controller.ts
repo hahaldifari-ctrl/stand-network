@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Controller,
   Get,
@@ -25,6 +25,11 @@ export class OrganizationsController {
   constructor(
     private readonly organizationsService: OrganizationsService,
   ) {}
+
+  @Get()
+  findAll() {
+    return this.organizationsService.findAll();
+  }
 
   @Post()
   @UseGuards(JwtAuthGuard)

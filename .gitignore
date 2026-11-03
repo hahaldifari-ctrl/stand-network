@@ -55,3 +55,20 @@ coverage/
 # Misc
 *.tmp
 *.temp
+
+# Local database backups and inspection files
+/backups/
+/stand-before-evidence-media-migration.sql
+/stand-prelaunch-backup.sql
+/apps/api/check-evidence.sql
+/apps/api/check-user.sql
+
+# Temporary source and schema backups
+*.backup-*
+*.before-*
+*.confidence-fix-*
+/apps/api/prisma/schema.prisma.before-evidence-media
+/apps/web/src/lib/api.ts.backup-*
+
+# npm lockfile is not used in this pnpm workspace
+/package-lock.json

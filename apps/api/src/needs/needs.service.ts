@@ -306,4 +306,74 @@ export class NeedsService {
       },
     });
   }
+
+  async findResponses() {
+    return this.prisma.response.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        type: true,
+        message: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        need: {
+          select: {
+            id: true,
+            title: true,
+            location: true,
+          },
+        },
+        organization: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async updateResponseStatus(id: string, status: ResponseStatus) {
+    if (
+      !([
+        ResponseStatus.ACKNOWLEDGED,
+        ResponseStatus.IN_PROGRESS,
+        ResponseStatus.COMPLETED,
+        ResponseStatus.CANCELLED,
+      ] as ResponseStatus[]).includes(status)
+    ) {
+      throw new BadRequestException(
+        'Choose ACKNOWLEDGED, IN_PROGRESS, COMPLETED, or CANCELLED',
+      );
+    }
+
+    const response = await this.prisma.response.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!response) {
+      throw new NotFoundException('Support response not found');
+    }
+
+    return this.prisma.response.update({
+      where: { id },
+      data: { status },
+      select: {
+        id: true,
+        type: true,
+        status: true,
+        updatedAt: true,
+      },
+    });
+  }
 }
+

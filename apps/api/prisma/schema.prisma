@@ -6,6 +6,238 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id                         String                      @id @default(uuid())
+  email                      String                      @unique
+  name                       String?
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime                    @updatedAt
+  role                       UserRole                    @default(USER)
+  passwordHash               String?
+  createdIncidents           Incident[]
+  organization               Organization?
+  prayers                    Prayer[]
+  responses                  Response[]
+  verificationReviews        VerificationReview[]
+  evidenceReviews            EvidenceReview[]
+  evidencePublicationReviews EvidencePublicationReview[]
+  incidentIntakesSubmitted   IncidentIntake[]            @relation("IntakeSubmitter")
+  intakeReviews              IntakeReview[]
+}
+
+model Organization {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  location    String?
+  website     String?
+  ownerId     String     @unique
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  needs       Need[]
+  owner       User       @relation(fields: [ownerId], references: [id])
+  responses   Response[]
+}
+
+model Incident {
+  id                  String               @id @default(uuid())
+  title               String
+  description         String
+  community           String?
+  incidentDate        DateTime?
+  incidentType        IncidentType
+  status              IncidentStatus       @default(REPORTED)
+  affectedPeopleCount Int?
+  sourceSummary       String?
+  createdById         String
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  state               String
+  lga                 String?
+  region              String?
+  confidenceLevel     ConfidenceLevel      @default(UNVERIFIED)
+  motivation          IncidentMotivation   @default(UNKNOWN)
+  peopleAbducted      Int?
+  peopleDisplaced     Int?
+  peopleInjured       Int?
+  peopleKilled        Int?
+  propertyDamage      String?
+  religiousContext    ReligiousContext     @default(UNKNOWN)
+  verificationSummary String?
+  evidence            Evidence[]
+  createdBy           User                 @relation(fields: [createdById], references: [id])
+  needs               Need[]
+  sources             Source[]
+  intakeOrigin        IncidentIntake?      @relation("IntakeCreatedIncident")
+  reviews             VerificationReview[]
+
+  @@index([status])
+  @@index([incidentType])
+  @@index([motivation])
+  @@index([religiousContext])
+  @@index([confidenceLevel])
+  @@index([state])
+  @@index([lga])
+  @@index([incidentDate])
+  @@index([createdById])
+}
+
+model Source {
+  id          String     @id @default(uuid())
+  name        String
+  sourceType  SourceType
+  title       String?
+  url         String?
+  publisher   String?
+  author      String?
+  publishedAt DateTime?
+  notes       String?
+  incidentId  String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  evidence    Evidence[]
+  incident    Incident   @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId])
+  @@index([sourceType])
+}
+
+model Evidence {
+  id                 String                      @id @default(uuid())
+  type               EvidenceType
+  title              String?
+  description        String?
+  caption            String?
+  credit             String?
+  license            String?
+  contentRating      EvidenceContentRating       @default(STANDARD)
+  verificationStatus EvidenceVerificationStatus  @default(PENDING)
+  publicationStatus  EvidencePublicationStatus   @default(PENDING)
+  url                String?
+  storageKey         String?
+  mimeType           String?
+  capturedAt         DateTime?
+  incidentId         String
+  sourceId           String?
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
+  incident           Incident                    @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  source             Source?                     @relation(fields: [sourceId], references: [id])
+  reviews            EvidenceReview[]
+  publicationReviews EvidencePublicationReview[]
+
+  @@index([incidentId])
+  @@index([sourceId])
+  @@index([type])
+  @@index([verificationStatus])
+  @@index([publicationStatus])
+  @@index([contentRating])
+}
+
+model EvidenceReview {
+  id         String                 @id @default(uuid())
+  decision   EvidenceReviewDecision
+  notes      String?
+  evidenceId String
+  reviewerId String
+  createdAt  DateTime               @default(now())
+  evidence   Evidence               @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  reviewer   User                   @relation(fields: [reviewerId], references: [id])
+
+  @@index([evidenceId])
+  @@index([reviewerId])
+  @@index([decision])
+  @@index([createdAt])
+}
+
+model EvidencePublicationReview {
+  id         String                      @id @default(uuid())
+  decision   EvidencePublicationDecision
+  notes      String?
+  evidenceId String
+  reviewerId String
+  createdAt  DateTime                    @default(now())
+  evidence   Evidence                    @relation(fields: [evidenceId], references: [id], onDelete: Restrict)
+  reviewer   User                        @relation(fields: [reviewerId], references: [id])
+
+  @@index([evidenceId])
+  @@index([reviewerId])
+  @@index([decision])
+  @@index([createdAt])
+}
+
+model VerificationReview {
+  id         String               @id @default(uuid())
+  decision   VerificationDecision
+  notes      String?
+  incidentId String
+  reviewerId String
+  createdAt  DateTime             @default(now())
+  incident   Incident             @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  reviewer   User                 @relation(fields: [reviewerId], references: [id])
+
+  @@index([incidentId])
+  @@index([reviewerId])
+  @@index([decision])
+}
+
+model Need {
+  id             String       @id @default(uuid())
+  title          String
+  description    String
+  location       String
+  community      String?
+  status         NeedStatus   @default(DRAFT)
+  urgency        NeedUrgency  @default(MEDIUM)
+  verified       Boolean      @default(false)
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  incidentId     String?
+  incident       Incident?    @relation(fields: [incidentId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  prayers        Prayer[]
+  responses      Response[]
+
+  @@index([status])
+  @@index([urgency])
+  @@index([location])
+  @@index([organizationId])
+  @@index([incidentId])
+}
+
+model Prayer {
+  id        String   @id @default(uuid())
+  message   String?
+  userId    String
+  needId    String
+  createdAt DateTime @default(now())
+  need      Need     @relation(fields: [needId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([needId])
+  @@index([userId])
+}
+
+model Response {
+  id             String         @id @default(uuid())
+  type           ResponseType
+  message        String?
+  status         ResponseStatus @default(SUBMITTED)
+  userId         String
+  needId         String
+  organizationId String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  need           Need           @relation(fields: [needId], references: [id])
+  organization   Organization?  @relation(fields: [organizationId], references: [id])
+  user           User           @relation(fields: [userId], references: [id])
+
+  @@index([needId])
+  @@index([userId])
+  @@index([status])
+}
+
 enum UserRole {
   USER
   ADMIN
@@ -54,13 +286,38 @@ enum IncidentStatus {
 
 enum IncidentType {
   ATTACK
-  KIDNAPPING
+  KILLING
+  ABDUCTION
   DISPLACEMENT
   DESTRUCTION
   THREAT
   ARSON
-  ABDUCTION
   OTHER
+}
+
+enum IncidentMotivation {
+  RELIGIOUS_PERSECUTION
+  INSURGENCY_TERRORISM
+  CRIMINAL_RANSOM
+  LAND_RESOURCE_CONFLICT
+  COMMUNAL_VIOLENCE
+  POLITICAL
+  UNKNOWN
+}
+
+enum ReligiousContext {
+  HIGH
+  MODERATE
+  LOW
+  UNKNOWN
+  UNDER_REVIEW
+}
+
+enum ConfidenceLevel {
+  UNVERIFIED
+  CORROBORATING
+  VERIFIED
+  DISPUTED
 }
 
 enum SourceType {
@@ -89,211 +346,148 @@ enum EvidenceType {
   OTHER
 }
 
+enum EvidenceContentRating {
+  STANDARD
+  GRAPHIC
+}
+
+enum EvidenceVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum EvidencePublicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum EvidencePublicationDecision {
+  APPROVED
+  REJECTED
+}
+
+enum EvidenceReviewDecision {
+  VERIFIED
+  REJECTED
+}
+
 enum VerificationDecision {
   VERIFIED
   REJECTED
   NEEDS_MORE_INFORMATION
 }
 
-model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
-  name         String?
-  passwordHash String?
-  role         UserRole      @default(USER)
-
-  organization Organization?
-
-  prayers   Prayer[]
-  responses Response[]
-
-  createdIncidents Incident[]
-  verificationReviews VerificationReview[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum IntakeStatus {
+  NEW
+  UNDER_REVIEW
+  NEEDS_MORE_INFORMATION
+  ACCEPTED
+  REJECTED
+  DUPLICATE
+  CONVERTED
 }
 
-model Organization {
-  id          String  @id @default(uuid())
-  name        String
-  description String?
-  location    String?
-  website     String?
-
-  ownerId String @unique
-  owner   User   @relation(fields: [ownerId], references: [id])
-
-  needs     Need[]
-  responses Response[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum IntakeAnalysisStatus {
+  DRAFT
+  REVIEWED
+  SUPERSEDED
 }
 
-model Incident {
-  id          String         @id @default(uuid())
-  title       String
-  description String
-  location    String
-  community   String?
-  incidentDate DateTime?
-  incidentType IncidentType
-  status      IncidentStatus @default(REPORTED)
-
-  affectedPeopleCount Int?
-  sourceSummary      String?
-
-  createdById String
-  createdBy   User   @relation(fields: [createdById], references: [id])
-
-  sources     Source[]
-  evidence    Evidence[]
-  reviews     VerificationReview[]
-  needs       Need[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status])
-  @@index([incidentType])
-  @@index([location])
-  @@index([incidentDate])
-  @@index([createdById])
+enum IntakeReviewDecision {
+  START_REVIEW
+  NEEDS_MORE_INFORMATION
+  ACCEPT_FOR_INCIDENT
+  REJECT
+  MARK_DUPLICATE
 }
 
-model Source {
-  id          String     @id @default(uuid())
-  name        String
-  sourceType  SourceType
-  title       String?
-  url         String?
-  publisher   String?
-  author      String?
-  publishedAt DateTime?
-  notes       String?
+model IncidentIntake {
+  id                  String        @id @default(uuid())
+  title               String
+  originalText        String        @db.Text
+  countryCode         String        @default("NG") @db.VarChar(2)
+  admin1              String?
+  admin2              String?
+  locality            String?
+  claimedIncidentDate DateTime?
+  incidentType        IncidentType?
+  status              IntakeStatus  @default(NEW)
+  submittedById       String?
+  createdIncidentId   String?       @unique
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 
-  incidentId String
-  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  submittedBy     User?            @relation("IntakeSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
+  createdIncident Incident?        @relation("IntakeCreatedIncident", fields: [createdIncidentId], references: [id], onDelete: SetNull)
+  sources         IntakeSource[]
+  analyses        IntakeAnalysis[]
+  reviews         IntakeReview[]
 
-  evidence Evidence[]
+  @@index([status, createdAt])
+  @@index([countryCode, admin1, admin2])
+  @@index([claimedIncidentDate])
+  @@index([submittedById])
+}
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model IntakeSource {
+  id           String     @id @default(uuid())
+  name         String
+  sourceType   SourceType
+  url          String?
+  canonicalUrl String?
+  title        String?
+  publisher    String?
+  author       String?
+  publishedAt  DateTime?
+  retrievedAt  DateTime   @default(now())
+  excerpt      String?    @db.Text
+  contentHash  String?
+  notes        String?    @db.Text
+  intakeId     String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
-  @@index([incidentId])
+  intake IncidentIntake @relation(fields: [intakeId], references: [id], onDelete: Cascade)
+
+  @@index([intakeId])
   @@index([sourceType])
+  @@index([contentHash])
+  @@index([canonicalUrl])
 }
 
-model Evidence {
-  id          String       @id @default(uuid())
-  type        EvidenceType
-  title       String?
-  description String?
+model IntakeAnalysis {
+  id                  String               @id @default(uuid())
+  provider            String?
+  model               String?
+  promptVersion       String?
+  summary             String               @db.Text
+  extractedData       Json?
+  uncertaintyNotes    String?              @db.Text
+  duplicateCandidates Json?
+  status              IntakeAnalysisStatus @default(DRAFT)
+  intakeId            String
+  createdAt           DateTime             @default(now())
 
-  url        String?
-  storageKey String?
-  mimeType   String?
-  capturedAt DateTime?
+  intake IncidentIntake @relation(fields: [intakeId], references: [id], onDelete: Cascade)
 
-  incidentId String
-  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
-
-  sourceId String?
-  source   Source? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([incidentId])
-  @@index([sourceId])
-  @@index([type])
+  @@index([intakeId, createdAt])
+  @@index([status])
 }
 
-model VerificationReview {
+model IntakeReview {
   id         String               @id @default(uuid())
-  decision   VerificationDecision
-  notes      String?
-
-  incidentId String
-  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
-
+  decision   IntakeReviewDecision
+  notes      String?              @db.Text
+  intakeId   String
   reviewerId String
-  reviewer   User   @relation(fields: [reviewerId], references: [id])
+  createdAt  DateTime             @default(now())
 
-  createdAt DateTime @default(now())
+  intake   IncidentIntake @relation(fields: [intakeId], references: [id], onDelete: Cascade)
+  reviewer User           @relation(fields: [reviewerId], references: [id], onDelete: Restrict)
 
-  @@index([incidentId])
+  @@index([intakeId, createdAt])
   @@index([reviewerId])
   @@index([decision])
-}
-
-model Need {
-  id          String      @id @default(uuid())
-  title       String
-  description String
-  location    String
-  community   String?
-  status      NeedStatus  @default(DRAFT)
-  urgency     NeedUrgency @default(MEDIUM)
-  verified    Boolean     @default(false)
-
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
-
-  incidentId String?
-  incident   Incident? @relation(fields: [incidentId], references: [id], onDelete: SetNull)
-
-  prayers   Prayer[]
-  responses Response[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status])
-  @@index([urgency])
-  @@index([location])
-  @@index([organizationId])
-  @@index([incidentId])
-}
-
-model Prayer {
-  id String @id @default(uuid())
-
-  message String?
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  needId String
-  need  Need  @relation(fields: [needId], references: [id])
-
-  createdAt DateTime @default(now())
-
-  @@index([needId])
-  @@index([userId])
-}
-
-model Response {
-  id String @id @default(uuid())
-
-  type    ResponseType
-  message String?
-  status  ResponseStatus @default(SUBMITTED)
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  needId String
-  need  Need  @relation(fields: [needId], references: [id])
-
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([needId])
-  @@index([userId])
-  @@index([status])
 }
