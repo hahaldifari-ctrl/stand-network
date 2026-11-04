@@ -10,6 +10,8 @@ import {
   EvidencePublicationDecision,
   EvidencePublicationStatus,
   EvidenceVerificationStatus,
+  IncidentPublicationDecision,
+  IncidentPublicationStatus,
   IncidentStatus,
   VerificationDecision,
 } from '@prisma/client';
@@ -20,15 +22,19 @@ describe('IncidentsService', () => {
   let service: IncidentsService;
 
   const tx = {
+    incidentPublicationReview: {
+      create: jest.fn(),
+    },
     evidencePublicationReview: {
       create: jest.fn(),
     },
     verificationReview: {
       create: jest.fn(),
     },
-    incident: {
-      update: jest.fn(),
-    },
+  incident: {
+  update: jest.fn(),
+  updateMany: jest.fn(),
+},
     evidence: {
       update: jest.fn(),
       updateMany: jest.fn(),
@@ -38,6 +44,7 @@ describe('IncidentsService', () => {
   const prisma = {
     evidence: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
       create: jest.fn(),
     },
     source: {
@@ -46,6 +53,8 @@ describe('IncidentsService', () => {
     },
     incident: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
     },
     $transaction: jest.fn(),
   };
@@ -73,13 +82,10 @@ describe('IncidentsService', () => {
     jest.clearAllMocks();
 
     prisma.$transaction.mockImplementation(
-      async (callback: (transaction: typeof tx) => unknown) =>
-        callback(tx),
+      async (callback: (transaction: typeof tx) => unknown) => callback(tx),
     );
 
-    service = new IncidentsService(
-      prisma as unknown as PrismaService,
-    );
+    service = new IncidentsService(prisma as unknown as PrismaService);
   });
 
   describe('addSource and addEvidence submitter attribution', () => {
@@ -102,11 +108,7 @@ describe('IncidentsService', () => {
         submittedById: 'submitter-1',
       });
 
-      await service.addSource(
-        'incident-1',
-        dto as any,
-        'submitter-1',
-      );
+      await service.addSource('incident-1', dto as any, 'submitter-1');
 
       expect(prisma.source.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -129,11 +131,7 @@ describe('IncidentsService', () => {
         submittedById: 'submitter-1',
       });
 
-      await service.addEvidence(
-        'incident-1',
-        dto as any,
-        'submitter-1',
-      );
+      await service.addEvidence('incident-1', dto as any, 'submitter-1');
 
       expect(prisma.evidence.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -410,6 +408,7 @@ describe('IncidentsService', () => {
           where: { id: 'incident-1' },
           data: expect.objectContaining({
             status: IncidentStatus.VERIFIED,
+            publicationStatus: IncidentPublicationStatus.PENDING,
             confidenceLevel: ConfidenceLevel.VERIFIED,
             verificationSummary: dto.notes,
           }),
@@ -437,6 +436,7 @@ describe('IncidentsService', () => {
           where: { id: 'incident-1' },
           data: expect.objectContaining({
             status: IncidentStatus.REJECTED,
+            publicationStatus: IncidentPublicationStatus.PENDING,
             confidenceLevel: ConfidenceLevel.DISPUTED,
           }),
         }),
@@ -460,6 +460,7 @@ describe('IncidentsService', () => {
           where: { id: 'incident-1' },
           data: expect.objectContaining({
             status: IncidentStatus.UNDER_REVIEW,
+            publicationStatus: IncidentPublicationStatus.PENDING,
             confidenceLevel: ConfidenceLevel.CORROBORATING,
           }),
         }),
@@ -486,6 +487,267 @@ describe('IncidentsService', () => {
     });
   });
 
+  describe('public incident visibility', () => {
+    it('should list only verified and publication-approved incidents', async () => {
+      prisma.incident.findMany.mockResolvedValue([]);
+
+      await service.getPublicIncidents();
+
+      expect(prisma.incident.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            status: IncidentStatus.VERIFIED,
+            publicationStatus: IncidentPublicationStatus.APPROVED,
+          },
+        }),
+      );
+    });
+
+    it('should require publication approval when retrieving an incident', async () => {
+      prisma.incident.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.getPublicIncident('incident-1'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(prisma.incident.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            id: 'incident-1',
+            status: IncidentStatus.VERIFIED,
+            publicationStatus: IncidentPublicationStatus.APPROVED,
+          },
+        }),
+      );
+    });
+
+    it('should not retrieve evidence for an unpublished incident', async () => {
+      prisma.incident.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.getPublicEvidence('incident-1'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(prisma.incident.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            id: 'incident-1',
+            status: IncidentStatus.VERIFIED,
+            publicationStatus: IncidentPublicationStatus.APPROVED,
+          },
+        }),
+      );
+
+      expect(prisma.evidence.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('reviewIncidentPublication', () => {
+    const publicationDto = {
+      decision: IncidentPublicationDecision.APPROVED,
+      notes: 'Publication reviewed and approved.',
+    };
+
+    beforeEach(() => {
+      prisma.incident.findUnique.mockResolvedValue({
+        id: 'incident-1',
+        status: IncidentStatus.VERIFIED,
+      });
+
+      tx.incidentPublicationReview.create.mockResolvedValue({
+        id: 'publication-review-1',
+        decision: IncidentPublicationDecision.APPROVED,
+      });
+
+      tx.incident.updateMany.mockResolvedValue({ count: 1 });
+
+      tx.incident.update.mockResolvedValue({
+        id: 'incident-1',
+        publicationStatus: IncidentPublicationStatus.APPROVED,
+      });
+    });
+
+    it('should reject users without verifier or admin privileges', async () => {
+      await expect(
+        service.reviewIncidentPublication(
+          'incident-1',
+          publicationDto as any,
+          'user-1',
+          'MEMBER',
+        ),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+
+      expect(prisma.incident.findUnique).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('should reject publication review for a nonexistent incident', async () => {
+      prisma.incident.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.reviewIncidentPublication(
+          'incident-1',
+          publicationDto as any,
+          'reviewer-1',
+          'VERIFIER',
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('should require non-whitespace notes for approval and rejection', async () => {
+      for (const decision of [
+        IncidentPublicationDecision.APPROVED,
+        IncidentPublicationDecision.REJECTED,
+      ]) {
+        await expect(
+          service.reviewIncidentPublication(
+            'incident-1',
+            { decision, notes: '   ' } as any,
+            'reviewer-1',
+            'VERIFIER',
+          ),
+        ).rejects.toBeInstanceOf(BadRequestException);
+      }
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('should prevent approval of an incident that is not verified', async () => {
+      prisma.incident.findUnique.mockResolvedValue({
+        id: 'incident-1',
+        status: IncidentStatus.UNDER_REVIEW,
+      });
+
+      await expect(
+        service.reviewIncidentPublication(
+          'incident-1',
+          publicationDto as any,
+          'reviewer-1',
+          'VERIFIER',
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('should prevent approval if the incident loses verified status before the conditional update', async () => {
+      tx.incident.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.reviewIncidentPublication(
+          'incident-1',
+          publicationDto as any,
+          'reviewer-1',
+          'VERIFIER',
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(tx.incident.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'incident-1',
+          status: IncidentStatus.VERIFIED,
+        },
+        data: {
+          publicationStatus: IncidentPublicationStatus.APPROVED,
+        },
+      });
+
+      expect(tx.incident.update).not.toHaveBeenCalled();
+      expect(tx.incidentPublicationReview.create).not.toHaveBeenCalled();
+    });
+
+    it('should approve publication and record the review in one transaction', async () => {
+      tx.incident.updateMany.mockResolvedValue({ count: 1 });
+
+      const result = await service.reviewIncidentPublication(
+        'incident-1',
+        publicationDto as any,
+        'reviewer-1',
+        'VERIFIER',
+      );
+
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+
+      expect(tx.incident.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'incident-1',
+          status: IncidentStatus.VERIFIED,
+        },
+        data: {
+          publicationStatus: IncidentPublicationStatus.APPROVED,
+        },
+      });
+
+      expect(tx.incident.update).toHaveBeenCalledWith({
+        where: { id: 'incident-1' },
+        data: {
+          publicationStatus: IncidentPublicationStatus.APPROVED,
+        },
+      });
+
+      expect(tx.incidentPublicationReview.create).toHaveBeenCalledWith({
+        data: {
+          decision: IncidentPublicationDecision.APPROVED,
+          notes: publicationDto.notes,
+          incidentId: 'incident-1',
+          reviewerId: 'reviewer-1',
+        },
+      });
+
+      expect(result).toEqual({
+        incident: expect.objectContaining({
+          publicationStatus: IncidentPublicationStatus.APPROVED,
+        }),
+        review: expect.objectContaining({
+          id: 'publication-review-1',
+        }),
+      });
+    });
+
+    it('should trim notes and record a rejection decision', async () => {
+      const dto = {
+        decision: IncidentPublicationDecision.REJECTED,
+        notes: '  Publication not suitable for release.  ',
+      };
+
+      tx.incidentPublicationReview.create.mockResolvedValue({
+        id: 'publication-review-2',
+        decision: IncidentPublicationDecision.REJECTED,
+      });
+
+      tx.incident.update.mockResolvedValue({
+        id: 'incident-1',
+        publicationStatus: IncidentPublicationStatus.REJECTED,
+      });
+
+      await service.reviewIncidentPublication(
+        'incident-1',
+        dto as any,
+        'reviewer-1',
+        'ADMIN',
+      );
+
+      expect(tx.incidentPublicationReview.create).toHaveBeenCalledWith({
+        data: {
+          decision: IncidentPublicationDecision.REJECTED,
+          notes: 'Publication not suitable for release.',
+          incidentId: 'incident-1',
+          reviewerId: 'reviewer-1',
+        },
+      });
+
+      expect(tx.incident.update).toHaveBeenCalledWith({
+        where: { id: 'incident-1' },
+        data: {
+          publicationStatus: IncidentPublicationStatus.REJECTED,
+        },
+      });
+
+      expect(tx.incident.updateMany).not.toHaveBeenCalled();
+    });
+  });
   describe('reviewEvidence', () => {
     const reviewDto = {
       decision: EvidenceReviewDecision.VERIFIED,
@@ -644,7 +906,5 @@ describe('IncidentsService', () => {
       expect(tx.evidenceReview.create).toHaveBeenCalledTimes(1);
       expect(tx.evidence.update).toHaveBeenCalledTimes(1);
     });
-  });});
-
-
-
+  });
+});

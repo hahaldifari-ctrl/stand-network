@@ -19,6 +19,7 @@ import { CreateSourceDto } from './dto/create-source.dto';
 import { CreateVerificationReviewDto } from './dto/create-verification-review.dto';
 import { ReviewEvidenceDto } from './dto/review-evidence.dto';
 import { ReviewEvidencePublicationDto } from './dto/review-evidence-publication.dto';
+import { ReviewIncidentPublicationDto } from './dto/review-incident-publication.dto';
 import { IncidentsService } from './incidents.service';
 
 interface AuthenticatedRequest extends Request {
@@ -31,9 +32,7 @@ interface AuthenticatedRequest extends Request {
 
 @Controller('incidents')
 export class IncidentsController {
-  constructor(
-    private readonly incidentsService: IncidentsService,
-  ) {}
+  constructor(private readonly incidentsService: IncidentsService) {}
 
   @Get()
   getPublicIncidents() {
@@ -52,10 +51,7 @@ export class IncidentsController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(
-    @Body() dto: CreateIncidentDto,
-    @Req() req: AuthenticatedRequest,
-  ) {
+  create(@Body() dto: CreateIncidentDto, @Req() req: AuthenticatedRequest) {
     return this.incidentsService.create(dto, req.user.id);
   }
 
@@ -66,11 +62,7 @@ export class IncidentsController {
     @Body() dto: CreateSourceDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    return this.incidentsService.addSource(
-      incidentId,
-      dto,
-      req.user.id,
-    );
+    return this.incidentsService.addSource(incidentId, dto, req.user.id);
   }
 
   @Post(':id/evidence')
@@ -80,11 +72,7 @@ export class IncidentsController {
     @Body() dto: CreateEvidenceDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    return this.incidentsService.addEvidence(
-      incidentId,
-      dto,
-      req.user.id,
-    );
+    return this.incidentsService.addEvidence(incidentId, dto, req.user.id);
   }
 
   @Patch(':id/evidence/:evidenceId/review')
@@ -117,6 +105,22 @@ export class IncidentsController {
     return this.incidentsService.reviewEvidencePublication(
       incidentId,
       evidenceId,
+      dto,
+      req.user.id,
+      req.user.role,
+    );
+  }
+
+  @Patch(':id/publication-review')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.VERIFIER)
+  reviewIncidentPublication(
+    @Param('id') incidentId: string,
+    @Body() dto: ReviewIncidentPublicationDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.incidentsService.reviewIncidentPublication(
+      incidentId,
       dto,
       req.user.id,
       req.user.role,

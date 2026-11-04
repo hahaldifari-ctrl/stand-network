@@ -21,6 +21,7 @@ model User {
   verificationReviews        VerificationReview[]
   evidenceReviews            EvidenceReview[]
   evidencePublicationReviews EvidencePublicationReview[]
+  incidentPublicationReviews IncidentPublicationReview[]
   incidentIntakesSubmitted   IncidentIntake[]            @relation("IntakeSubmitter")
   submittedSources           Source[]                    @relation("SourceSubmitter")
   submittedEvidence          Evidence[]                  @relation("EvidenceSubmitter")
@@ -42,38 +43,42 @@ model Organization {
 }
 
 model Incident {
-  id                  String               @id @default(uuid())
+  id                  String                    @id @default(uuid())
   title               String
   description         String
   community           String?
   incidentDate        DateTime?
   incidentType        IncidentType
-  status              IncidentStatus       @default(REPORTED)
+  status              IncidentStatus            @default(REPORTED)
+  publicationStatus   IncidentPublicationStatus @default(PENDING)
   affectedPeopleCount Int?
   sourceSummary       String?
   createdById         String
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
   state               String
   lga                 String?
   region              String?
-  confidenceLevel     ConfidenceLevel      @default(UNVERIFIED)
-  motivation          IncidentMotivation   @default(UNKNOWN)
+  confidenceLevel     ConfidenceLevel           @default(UNVERIFIED)
+  motivation          IncidentMotivation        @default(UNKNOWN)
   peopleAbducted      Int?
   peopleDisplaced     Int?
   peopleInjured       Int?
   peopleKilled        Int?
   propertyDamage      String?
-  religiousContext    ReligiousContext     @default(UNKNOWN)
+  religiousContext    ReligiousContext          @default(UNKNOWN)
   verificationSummary String?
   evidence            Evidence[]
-  createdBy           User                 @relation(fields: [createdById], references: [id])
+  createdBy           User                      @relation(fields: [createdById], references: [id])
   needs               Need[]
   sources             Source[]
-  intakeOrigin        IncidentIntake?      @relation("IntakeCreatedIncident")
+  intakeOrigin        IncidentIntake?           @relation("IntakeCreatedIncident")
   reviews             VerificationReview[]
 
+  publicationReviews IncidentPublicationReview[]
+
   @@index([status])
+  @@index([publicationStatus])
   @@index([incidentType])
   @@index([motivation])
   @@index([religiousContext])
@@ -85,22 +90,22 @@ model Incident {
 }
 
 model Source {
-  id          String     @id @default(uuid())
-  name        String
-  sourceType  SourceType
-  title       String?
-  url         String?
-  publisher   String?
-  author      String?
-  publishedAt DateTime?
-  notes       String?
+  id            String     @id @default(uuid())
+  name          String
+  sourceType    SourceType
+  title         String?
+  url           String?
+  publisher     String?
+  author        String?
+  publishedAt   DateTime?
+  notes         String?
   incidentId    String
   submittedById String?
   submittedBy   User?      @relation("SourceSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  evidence    Evidence[]
-  incident    Incident   @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  evidence      Evidence[]
+  incident      Incident   @relation(fields: [incidentId], references: [id], onDelete: Cascade)
 
   @@index([incidentId])
   @@index([sourceType])
@@ -187,6 +192,23 @@ model VerificationReview {
   @@index([incidentId])
   @@index([reviewerId])
   @@index([decision])
+}
+
+model IncidentPublicationReview {
+  id         String                      @id @default(cuid())
+  incidentId String
+  reviewerId String
+  decision   IncidentPublicationDecision
+  notes      String
+  createdAt  DateTime                    @default(now())
+
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  reviewer User     @relation(fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  @@index([incidentId])
+  @@index([reviewerId])
+  @@index([decision])
+  @@index([createdAt])
 }
 
 model Need {
@@ -289,6 +311,17 @@ enum IncidentStatus {
   UNDER_REVIEW
   VERIFIED
   PUBLISHED
+  REJECTED
+}
+
+enum IncidentPublicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum IncidentPublicationDecision {
+  APPROVED
   REJECTED
 }
 

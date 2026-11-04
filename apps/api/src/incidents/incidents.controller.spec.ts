@@ -21,6 +21,7 @@ describe('IncidentsController', () => {
     addEvidence: jest.fn(),
     reviewEvidence: jest.fn(),
     reviewEvidencePublication: jest.fn(),
+    reviewIncidentPublication: jest.fn(),
     createVerificationReview: jest.fn(),
     getVerificationRecord: jest.fn(),
   };
@@ -28,6 +29,7 @@ describe('IncidentsController', () => {
   const protectedMethods = [
     'reviewEvidence',
     'reviewEvidencePublication',
+    'reviewIncidentPublication',
     'createVerificationReview',
     'getVerificationRecord',
   ] as const;
@@ -81,6 +83,29 @@ describe('IncidentsController', () => {
       'submitter-2',
     );
   });
+  it('should pass the incident publication review to the service with reviewer identity and role', () => {
+    const dto = {
+      decision: 'APPROVED',
+      notes: 'Publication review completed.',
+    };
+
+    const req = {
+      user: {
+        id: 'reviewer-1',
+        email: 'reviewer@example.com',
+        role: UserRole.VERIFIER,
+      },
+    };
+
+    controller.reviewIncidentPublication('incident-1', dto as any, req as any);
+
+    expect(incidentsService.reviewIncidentPublication).toHaveBeenCalledWith(
+      'incident-1',
+      dto,
+      'reviewer-1',
+      UserRole.VERIFIER,
+    );
+  });
   it('should restrict sensitive endpoints to ADMIN and VERIFIER roles', () => {
     for (const method of protectedMethods) {
       const roles = Reflect.getMetadata(
@@ -88,10 +113,7 @@ describe('IncidentsController', () => {
         IncidentsController.prototype[method],
       );
 
-      expect(roles).toEqual([
-        UserRole.ADMIN,
-        UserRole.VERIFIER,
-      ]);
+      expect(roles).toEqual([UserRole.ADMIN, UserRole.VERIFIER]);
     }
   });
 

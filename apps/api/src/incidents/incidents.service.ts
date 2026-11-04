@@ -11,6 +11,8 @@ import {
   EvidenceVerificationStatus,
   EvidencePublicationStatus,
   EvidencePublicationDecision,
+  IncidentPublicationDecision,
+  IncidentPublicationStatus,
   IncidentStatus,
   Prisma,
   VerificationDecision,
@@ -22,6 +24,7 @@ import { CreateSourceDto } from './dto/create-source.dto';
 import { CreateVerificationReviewDto } from './dto/create-verification-review.dto';
 import { ReviewEvidenceDto } from './dto/review-evidence.dto';
 import { ReviewEvidencePublicationDto } from './dto/review-evidence-publication.dto';
+import { ReviewIncidentPublicationDto } from './dto/review-incident-publication.dto';
 
 @Injectable()
 export class IncidentsService {
@@ -29,7 +32,10 @@ export class IncidentsService {
 
   async getPublicIncidents() {
     return this.prisma.incident.findMany({
-      where: { status: IncidentStatus.VERIFIED },
+      where: {
+        status: IncidentStatus.VERIFIED,
+        publicationStatus: IncidentPublicationStatus.APPROVED,
+      },
       select: {
         id: true,
         title: true,
@@ -53,10 +59,7 @@ export class IncidentsService {
         createdAt: true,
         updatedAt: true,
       },
-      orderBy: [
-        { incidentDate: 'desc' },
-        { createdAt: 'desc' },
-      ],
+      orderBy: [{ incidentDate: 'desc' }, { createdAt: 'desc' }],
     });
   }
 
@@ -65,6 +68,7 @@ export class IncidentsService {
       where: {
         id: incidentId,
         status: IncidentStatus.VERIFIED,
+        publicationStatus: IncidentPublicationStatus.APPROVED,
       },
       select: {
         id: true,
@@ -104,6 +108,7 @@ export class IncidentsService {
       where: {
         id: incidentId,
         status: IncidentStatus.VERIFIED,
+        publicationStatus: IncidentPublicationStatus.APPROVED,
       },
       select: { id: true },
     });
@@ -149,8 +154,8 @@ export class IncidentsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return evidence.filter(
-      (item) => Boolean(item.credit?.trim() && item.license?.trim()),
+    return evidence.filter((item) =>
+      Boolean(item.credit?.trim() && item.license?.trim()),
     );
   }
 
@@ -163,9 +168,7 @@ export class IncidentsService {
         lga: dto.lga,
         community: dto.community,
         region: dto.region,
-        incidentDate: dto.incidentDate
-          ? new Date(dto.incidentDate)
-          : undefined,
+        incidentDate: dto.incidentDate ? new Date(dto.incidentDate) : undefined,
         incidentType: dto.incidentType,
         affectedPeopleCount: dto.affectedPeopleCount,
         sourceSummary: dto.sourceSummary,
@@ -175,11 +178,7 @@ export class IncidentsService {
     });
   }
 
-  async addSource(
-    incidentId: string,
-    dto: CreateSourceDto,
-    userId: string,
-  ) {
+  async addSource(incidentId: string, dto: CreateSourceDto, userId: string) {
     await this.ensureIncidentExists(incidentId);
 
     return this.prisma.source.create({
@@ -190,9 +189,7 @@ export class IncidentsService {
         url: dto.url,
         publisher: dto.publisher,
         author: dto.author,
-        publishedAt: dto.publishedAt
-          ? new Date(dto.publishedAt)
-          : undefined,
+        publishedAt: dto.publishedAt ? new Date(dto.publishedAt) : undefined,
         notes: dto.notes,
         incidentId,
         submittedById: userId,
@@ -231,14 +228,11 @@ export class IncidentsService {
         caption: dto.caption,
         credit: dto.credit,
         license: dto.license,
-        contentRating:
-          dto.contentRating ?? EvidenceContentRating.STANDARD,
+        contentRating: dto.contentRating ?? EvidenceContentRating.STANDARD,
         url: dto.url,
         storageKey: dto.storageKey,
         mimeType: dto.mimeType,
-        capturedAt: dto.capturedAt
-          ? new Date(dto.capturedAt)
-          : undefined,
+        capturedAt: dto.capturedAt ? new Date(dto.capturedAt) : undefined,
         incidentId,
         sourceId: dto.sourceId,
         submittedById: userId,
@@ -269,9 +263,7 @@ export class IncidentsService {
     });
 
     if (!evidence) {
-      throw new NotFoundException(
-        'Evidence not found for this incident',
-      );
+      throw new NotFoundException('Evidence not found for this incident');
     }
 
     const verificationStatus =
@@ -343,9 +335,7 @@ export class IncidentsService {
     });
 
     if (!evidence) {
-      throw new NotFoundException(
-        'Evidence not found for this incident',
-      );
+      throw new NotFoundException('Evidence not found for this incident');
     }
 
     if (dto.decision === EvidencePublicationDecision.APPROVED) {
@@ -371,8 +361,9 @@ export class IncidentsService {
       }
 
       if (
-        /internal test|not for external publication|no publication|permission required/i
-          .test(evidence.license)
+        /internal test|not for external publication|no publication|permission required/i.test(
+          evidence.license,
+        )
       ) {
         throw new BadRequestException(
           'The recorded license does not permit publication approval',
@@ -435,8 +426,8 @@ export class IncidentsService {
 
       const updateData: Prisma.IncidentUpdateInput = {
         verificationSummary:
-          dto.notes ??
-          this.defaultVerificationSummary(dto.decision),
+          dto.notes ?? this.defaultVerificationSummary(dto.decision),
+        publicationStatus: IncidentPublicationStatus.PENDING,
       };
 
       switch (dto.decision) {
@@ -471,10 +462,7 @@ export class IncidentsService {
     });
   }
 
-  async getVerificationRecord(
-    incidentId: string,
-    requesterRole: string,
-  ) {
+  async getVerificationRecord(incidentId: string, requesterRole: string) {
     if (!['VERIFIER', 'ADMIN'].includes(requesterRole)) {
       throw new ForbiddenException(
         'Only verifiers and admins can access verification records',
@@ -518,6 +506,19 @@ export class IncidentsService {
             },
           },
         },
+        publicationReviews: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            reviewer: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -528,6 +529,96 @@ export class IncidentsService {
     return incident;
   }
 
+  async reviewIncidentPublication(
+    incidentId: string,
+    dto: ReviewIncidentPublicationDto,
+    reviewerId: string,
+    reviewerRole: string,
+  ) {
+    if (!['VERIFIER', 'ADMIN'].includes(reviewerRole)) {
+      throw new ForbiddenException(
+        'Only verifiers and admins can review incident publication',
+      );
+    }
+
+    const notes = dto.notes?.trim();
+
+    if (!notes) {
+      throw new BadRequestException('Publication review notes are required');
+    }
+
+    const incident = await this.prisma.incident.findUnique({
+      where: { id: incidentId },
+      select: {
+        id: true,
+        status: true,
+      },
+    });
+
+    if (!incident) {
+      throw new NotFoundException('Incident not found');
+    }
+
+    const isApproval =
+      dto.decision === IncidentPublicationDecision.APPROVED;
+
+    if (isApproval && incident.status !== IncidentStatus.VERIFIED) {
+      throw new BadRequestException(
+        'An incident must be verified before publication approval',
+      );
+    }
+
+    const publicationStatus = isApproval
+      ? IncidentPublicationStatus.APPROVED
+      : IncidentPublicationStatus.REJECTED;
+
+    return this.prisma.$transaction(async (tx) => {
+      let updatedIncident;
+
+      if (isApproval) {
+        // Recheck verification status as part of the database write.
+        const updateResult = await tx.incident.updateMany({
+          where: {
+            id: incidentId,
+            status: IncidentStatus.VERIFIED,
+          },
+          data: {
+            publicationStatus,
+          },
+        });
+
+        if (updateResult.count !== 1) {
+          throw new BadRequestException(
+            'The incident must still be verified at the time of publication approval',
+          );
+        }
+
+        updatedIncident = await tx.incident.update({
+          where: { id: incidentId },
+          data: { publicationStatus },
+        });
+      } else {
+        updatedIncident = await tx.incident.update({
+          where: { id: incidentId },
+          data: { publicationStatus },
+        });
+      }
+
+      const review = await tx.incidentPublicationReview.create({
+        data: {
+          decision: dto.decision,
+          notes,
+          incidentId,
+          reviewerId,
+        },
+      });
+
+      return {
+        incident: updatedIncident,
+        review,
+      };
+    });
+  }
   private async ensureIncidentExists(incidentId: string) {
     const incident = await this.prisma.incident.findUnique({
       where: { id: incidentId },
@@ -539,9 +630,7 @@ export class IncidentsService {
     }
   }
 
-  private defaultVerificationSummary(
-    decision: VerificationDecision,
-  ) {
+  private defaultVerificationSummary(decision: VerificationDecision) {
     switch (decision) {
       case VerificationDecision.VERIFIED:
         return 'Incident verified by an authorized reviewer.';
