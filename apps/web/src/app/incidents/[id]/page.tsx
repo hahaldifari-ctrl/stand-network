@@ -1,6 +1,12 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getIncident, type PublicIncidentDetail } from '@/lib/api';
+import {
+  getIncident,
+  getIncidentEvidence,
+  type PublicEvidence,
+  type PublicIncidentDetail,
+} from '@/lib/api';
 
 type IncidentDetailPageProps = {
   params: Promise<{
@@ -90,6 +96,18 @@ function impactItems(incident: PublicIncidentDetail) {
   return items;
 }
 
+function isHttpUrl(value?: string | null): value is string {
+  if (!value) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
 export default async function IncidentDetailPage({
   params,
 }: IncidentDetailPageProps) {
@@ -105,6 +123,17 @@ export default async function IncidentDetailPage({
     }
 
     throw error;
+  }
+
+  let evidence: PublicEvidence[] = [];
+  let evidenceUnavailable = false;
+
+  try {
+    evidence = (await getIncidentEvidence(id)).filter(
+      (item) => item.contentRating !== 'GRAPHIC',
+    );
+  } catch {
+    evidenceUnavailable = true;
   }
 
   const impacts = impactItems(incident);
@@ -200,6 +229,128 @@ export default async function IncidentDetailPage({
             </div>
           </section>
 
+          <section aria-labelledby="evidence-heading" className="space-y-5">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                Documentary record
+              </p>
+              <h2 id="evidence-heading" className="mt-2 text-2xl font-bold text-slate-900">
+                Evidence and sources
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
+                This section presents supporting material approved for public viewing.
+                Documentary material may be distressing. Graphic evidence is not displayed.
+                Source and usage information is provided where available.
+              </p>
+            </div>
+
+            {evidenceUnavailable ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-7 text-amber-900">
+                Supporting evidence could not be loaded at this time. Please check back later.
+              </div>
+            ) : evidence.length === 0 ? (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-7 text-slate-600">
+                No supporting evidence has been approved for public viewing for this incident.
+              </div>
+            ) : (
+              <div className="grid gap-6">
+                {evidence.map((item) => {
+                  const isImage =
+                    Boolean(item.mimeType?.toLowerCase().startsWith('image/')) &&
+                    isHttpUrl(item.url);
+
+                  return (
+                    <article
+                      key={item.id}
+                      className="overflow-hidden rounded-2xl border border-slate-200 bg-white"
+                    >
+                      {isImage ? (
+                        <div className="relative aspect-[16/10] w-full bg-slate-100">
+                          <Image
+                            src={item.url}
+                            alt={item.caption || item.title || 'Documentary evidence'}
+                            fill
+                            unoptimized
+                            sizes="(max-width: 768px) 100vw, 768px"
+                            className="object-contain"
+                          />
+                        </div>
+                      ) : null}
+
+                      <div className="space-y-3 p-5">
+                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          <span>{item.type.replaceAll('_', ' ')}</span>
+                          {item.contentRating !== 'STANDARD' && item.contentRating !== 'GENERAL' ? (
+                            <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800">
+                              Sensitive documentary material
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {item.title ? (
+                          <h3 className="text-lg font-semibold text-slate-900">
+                            {item.title}
+                          </h3>
+                        ) : null}
+
+                        {item.caption ? (
+                          <p className="text-sm leading-7 text-slate-700">{item.caption}</p>
+                        ) : null}
+
+                        {item.description ? (
+                          <p className="text-sm leading-7 text-slate-600">
+                            {item.description}
+                          </p>
+                        ) : null}
+
+                        {!isImage && isHttpUrl(item.url) ? (
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex text-sm font-semibold text-emerald-700 underline underline-offset-4"
+                          >
+                            View supporting material
+                          </a>
+                        ) : null}
+
+                        <div className="border-t border-slate-100 pt-4 text-xs leading-6 text-slate-500">
+                          <p>
+                            <span className="font-semibold text-slate-700">Credit:</span>{' '}
+                            {item.credit}
+                          </p>
+                          <p>
+                            <span className="font-semibold text-slate-700">License:</span>{' '}
+                            {item.license}
+                          </p>
+
+                          {item.source ? (
+                            <div className="mt-3">
+                              <p className="font-semibold text-slate-700">Original source</p>
+                              {item.source.name ? <p>{item.source.name}</p> : null}
+                              {item.source.title ? <p>{item.source.title}</p> : null}
+                              {item.source.publisher ? <p>Publisher: {item.source.publisher}</p> : null}
+                              {item.source.author ? <p>Author: {item.source.author}</p> : null}
+                              {isHttpUrl(item.source.url) ? (
+                                <a
+                                  href={item.source.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="mt-1 inline-flex font-semibold text-emerald-700 underline underline-offset-4"
+                                >
+                                  Visit original source
+                                </a>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
           <section>
             <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-7">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">

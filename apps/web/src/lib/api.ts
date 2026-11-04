@@ -1,4 +1,4 @@
-﻿const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3003").replace(/\/+$/, "");
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3003").replace(/\/+$/, "");
 
 export interface Need {
   id: string;
@@ -95,6 +95,31 @@ export interface PublicIncidentDetail extends PublicIncident {
   verificationSummary?: string | null;
 }
 
+export interface PublicEvidenceSource {
+  name?: string | null;
+  sourceType?: string | null;
+  title?: string | null;
+  url?: string | null;
+  publisher?: string | null;
+  author?: string | null;
+  publishedAt?: string | null;
+}
+
+export interface PublicEvidence {
+  id: string;
+  type: string;
+  title?: string | null;
+  description?: string | null;
+  caption?: string | null;
+  credit: string;
+  license: string;
+  contentRating: string;
+  url: string;
+  mimeType?: string | null;
+  capturedAt?: string | null;
+  createdAt: string;
+  source?: PublicEvidenceSource | null;
+}
 export async function getNeeds(): Promise<Need[]> {
   const response = await fetch(`${API_BASE_URL}/needs`, {
     cache: "no-store",
@@ -163,6 +188,28 @@ export async function getIncident(
   return response.json();
 }
 
+export async function getIncidentEvidence(
+  incidentId: string,
+): Promise<PublicEvidence[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/incidents/${encodeURIComponent(incidentId)}/evidence`,
+    {
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error("INCIDENT_EVIDENCE_NOT_FOUND");
+    }
+
+    throw new Error(
+      `Failed to fetch incident evidence: ${response.status}`,
+    );
+  }
+
+  return response.json();
+}
 export async function login(
   email: string,
   password: string,
