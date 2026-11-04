@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -178,6 +178,7 @@ export class IncidentsService {
   async addSource(
     incidentId: string,
     dto: CreateSourceDto,
+    userId: string,
   ) {
     await this.ensureIncidentExists(incidentId);
 
@@ -194,6 +195,7 @@ export class IncidentsService {
           : undefined,
         notes: dto.notes,
         incidentId,
+        submittedById: userId,
       },
     });
   }
@@ -201,6 +203,7 @@ export class IncidentsService {
   async addEvidence(
     incidentId: string,
     dto: CreateEvidenceDto,
+    userId: string,
   ) {
     await this.ensureIncidentExists(incidentId);
 
@@ -238,6 +241,7 @@ export class IncidentsService {
           : undefined,
         incidentId,
         sourceId: dto.sourceId,
+        submittedById: userId,
         verificationStatus: EvidenceVerificationStatus.PENDING,
       },
     });

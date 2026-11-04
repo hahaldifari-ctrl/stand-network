@@ -1,4 +1,9 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { VerificationDecision } from '@prisma/client';
 
 export class CreateVerificationReviewDto {
@@ -7,5 +12,6 @@ export class CreateVerificationReviewDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(5000)
   notes?: string;
 }

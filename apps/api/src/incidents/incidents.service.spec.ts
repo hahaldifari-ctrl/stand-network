@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
@@ -37,6 +37,11 @@ describe('IncidentsService', () => {
 
   const prisma = {
     evidence: {
+      findFirst: jest.fn(),
+      create: jest.fn(),
+    },
+    source: {
+      create: jest.fn(),
       findFirst: jest.fn(),
     },
     incident: {
@@ -77,6 +82,71 @@ describe('IncidentsService', () => {
     );
   });
 
+  describe('addSource and addEvidence submitter attribution', () => {
+    beforeEach(() => {
+      prisma.incident.findUnique.mockResolvedValue({
+        id: 'incident-1',
+      });
+    });
+
+    it('should record the authenticated user when adding a source', async () => {
+      const dto = {
+        name: 'Trusted News Organisation',
+        sourceType: 'NEWS',
+        title: 'Incident report',
+      };
+
+      prisma.source.create.mockResolvedValue({
+        id: 'source-1',
+        incidentId: 'incident-1',
+        submittedById: 'submitter-1',
+      });
+
+      await service.addSource(
+        'incident-1',
+        dto as any,
+        'submitter-1',
+      );
+
+      expect(prisma.source.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          name: dto.name,
+          incidentId: 'incident-1',
+          submittedById: 'submitter-1',
+        }),
+      });
+    });
+
+    it('should record the authenticated user and safe defaults when adding evidence', async () => {
+      const dto = {
+        type: 'IMAGE',
+        title: 'Incident photograph',
+      };
+
+      prisma.evidence.create.mockResolvedValue({
+        id: 'evidence-1',
+        incidentId: 'incident-1',
+        submittedById: 'submitter-1',
+      });
+
+      await service.addEvidence(
+        'incident-1',
+        dto as any,
+        'submitter-1',
+      );
+
+      expect(prisma.evidence.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          type: dto.type,
+          title: dto.title,
+          incidentId: 'incident-1',
+          submittedById: 'submitter-1',
+          contentRating: EvidenceContentRating.STANDARD,
+          verificationStatus: EvidenceVerificationStatus.PENDING,
+        }),
+      });
+    });
+  });
   describe('reviewEvidencePublication', () => {
     it('should reject users without verifier or admin privileges', async () => {
       await expect(

@@ -9,7 +9,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 import { CreateIncidentDto } from './create-incident.dto';
 import { CreateEvidenceDto } from './dto/create-evidence.dto';
 import { CreateSourceDto } from './dto/create-source.dto';
@@ -61,8 +64,13 @@ export class IncidentsController {
   addSource(
     @Param('id') incidentId: string,
     @Body() dto: CreateSourceDto,
+    @Req() req: AuthenticatedRequest,
   ) {
-    return this.incidentsService.addSource(incidentId, dto);
+    return this.incidentsService.addSource(
+      incidentId,
+      dto,
+      req.user.id,
+    );
   }
 
   @Post(':id/evidence')
@@ -70,12 +78,18 @@ export class IncidentsController {
   addEvidence(
     @Param('id') incidentId: string,
     @Body() dto: CreateEvidenceDto,
+    @Req() req: AuthenticatedRequest,
   ) {
-    return this.incidentsService.addEvidence(incidentId, dto);
+    return this.incidentsService.addEvidence(
+      incidentId,
+      dto,
+      req.user.id,
+    );
   }
 
   @Patch(':id/evidence/:evidenceId/review')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.VERIFIER)
   reviewEvidence(
     @Param('id') incidentId: string,
     @Param('evidenceId') evidenceId: string,
@@ -91,9 +105,9 @@ export class IncidentsController {
     );
   }
 
-
   @Patch(':id/evidence/:evidenceId/publication-review')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.VERIFIER)
   reviewEvidencePublication(
     @Param('id') incidentId: string,
     @Param('evidenceId') evidenceId: string,
@@ -108,8 +122,10 @@ export class IncidentsController {
       req.user.role,
     );
   }
+
   @Post(':id/reviews')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.VERIFIER)
   createVerificationReview(
     @Param('id') incidentId: string,
     @Body() dto: CreateVerificationReviewDto,
@@ -124,7 +140,8 @@ export class IncidentsController {
   }
 
   @Get(':id/verification')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.VERIFIER)
   getVerificationRecord(
     @Param('id') incidentId: string,
     @Req() req: AuthenticatedRequest,

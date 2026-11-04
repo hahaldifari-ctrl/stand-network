@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  MaxLength,
 } from 'class-validator';
 import {
   EvidenceContentRating,
@@ -16,22 +17,27 @@ export class CreateEvidenceDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(300)
   title?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(5000)
   description?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(5000)
   caption?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   credit?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   license?: string;
 
   @IsOptional()
@@ -44,10 +50,12 @@ export class CreateEvidenceDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(1024)
   storageKey?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(150)
   mimeType?: string;
 
   @IsOptional()
@@ -56,5 +64,6 @@ export class CreateEvidenceDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(191)
   sourceId?: string;
 }

@@ -22,6 +22,8 @@ model User {
   evidenceReviews            EvidenceReview[]
   evidencePublicationReviews EvidencePublicationReview[]
   incidentIntakesSubmitted   IncidentIntake[]            @relation("IntakeSubmitter")
+  submittedSources           Source[]                    @relation("SourceSubmitter")
+  submittedEvidence          Evidence[]                  @relation("EvidenceSubmitter")
   intakeReviews              IntakeReview[]
 }
 
@@ -92,7 +94,9 @@ model Source {
   author      String?
   publishedAt DateTime?
   notes       String?
-  incidentId  String
+  incidentId    String
+  submittedById String?
+  submittedBy   User?      @relation("SourceSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   evidence    Evidence[]
@@ -100,6 +104,7 @@ model Source {
 
   @@index([incidentId])
   @@index([sourceType])
+  @@index([submittedById])
 }
 
 model Evidence {
@@ -119,6 +124,8 @@ model Evidence {
   capturedAt         DateTime?
   incidentId         String
   sourceId           String?
+  submittedById      String?
+  submittedBy        User?                       @relation("EvidenceSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
   createdAt          DateTime                    @default(now())
   updatedAt          DateTime                    @updatedAt
   incident           Incident                    @relation(fields: [incidentId], references: [id], onDelete: Cascade)
@@ -128,6 +135,7 @@ model Evidence {
 
   @@index([incidentId])
   @@index([sourceId])
+  @@index([submittedById])
   @@index([type])
   @@index([verificationStatus])
   @@index([publicationStatus])
