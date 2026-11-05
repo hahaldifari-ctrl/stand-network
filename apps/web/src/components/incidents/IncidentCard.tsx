@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import type { PublicIncident } from '@/lib/api';
 
@@ -10,14 +11,20 @@ function formatDate(value?: string | null) {
     return 'Date not recorded';
   }
 
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Date not recorded';
+  }
+
   return new Intl.DateTimeFormat('en-NG', {
     dateStyle: 'medium',
-  }).format(new Date(value));
+  }).format(date);
 }
 
 function formatLabel(value?: string | null) {
   if (!value) {
-    return 'Not recorded';
+    return 'Type not recorded';
   }
 
   return value
@@ -32,83 +39,70 @@ function getLocation(incident: PublicIncident) {
     .join(', ') || 'Location not recorded';
 }
 
-function getImpact(incident: PublicIncident) {
-  if (
-    incident.affectedPeopleCount !== null &&
-    incident.affectedPeopleCount !== undefined
-  ) {
-    return `${incident.affectedPeopleCount} people affected`;
-  }
-
-  if (
-    incident.peopleKilled !== null &&
-    incident.peopleKilled !== undefined
-  ) {
-    return `${incident.peopleKilled} people killed`;
-  }
-
-  return null;
-}
-
 export default function IncidentCard({ incident }: IncidentCardProps) {
-  const impact = getImpact(incident);
-
   return (
-    <article className="flex h-full flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md sm:p-7">
+    <article className="group flex h-full flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg sm:p-7">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+        <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-800">
+          <span
+            className="h-1.5 w-1.5 rounded-full bg-emerald-600"
+            aria-hidden="true"
+          />
           Verified
         </span>
 
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-          {formatLabel(incident.incidentType)}
+        <span className="inline-flex items-center rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800">
+          Approved for public sharing
         </span>
       </div>
 
-      <h2 className="mt-5 text-xl font-semibold leading-7 tracking-tight text-slate-950">
-        {incident.title}
-      </h2>
+      <div className="mt-5">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+          {formatLabel(incident.incidentType)}
+        </p>
 
-      <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">
+        <h2 className="mt-3 text-xl font-semibold leading-7 tracking-tight text-slate-950">
+          {incident.title}
+        </h2>
+      </div>
+
+      <p className="mt-3 line-clamp-3 text-sm leading-7 text-slate-600">
         {incident.description}
       </p>
 
-      <div className="mt-5 space-y-3 border-t border-slate-100 pt-5 text-sm">
+      <dl className="mt-6 space-y-4 border-t border-slate-100 pt-5 text-sm">
         <div className="flex items-start gap-3">
-          <span className="mt-0.5 text-slate-400" aria-hidden="true">
+          <dt className="w-20 shrink-0 font-medium text-slate-500">
             Location
-          </span>
-          <span className="font-medium text-slate-700">
+          </dt>
+          <dd className="font-medium leading-6 text-slate-700">
             {getLocation(incident)}
-          </span>
+          </dd>
         </div>
 
         <div className="flex items-start gap-3">
-          <span className="mt-0.5 text-slate-400" aria-hidden="true">
+          <dt className="w-20 shrink-0 font-medium text-slate-500">
             Date
-          </span>
-          <span className="font-medium text-slate-700">
+          </dt>
+          <dd className="font-medium leading-6 text-slate-700">
             {formatDate(incident.incidentDate)}
-          </span>
+          </dd>
         </div>
-      </div>
+      </dl>
 
-      {impact ? (
-        <div className="mt-4">
-          <span className="inline-flex rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-            {impact}
-          </span>
-        </div>
-      ) : null}
-
-      <div className="mt-auto pt-7">
+      <div className="mt-auto border-t border-slate-100 pt-6">
         <Link
           href={`/incidents/${incident.id}`}
-          className="inline-flex items-center gap-2 text-sm font-bold text-emerald-800 transition hover:text-emerald-600"
+          aria-label={`Read incident report: ${incident.title}`}
+          className="inline-flex items-center gap-2 rounded-sm text-sm font-bold text-emerald-800 transition hover:text-emerald-600 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700"
         >
           Read incident report
-          <span aria-hidden="true">→</span>
+          <span
+            aria-hidden="true"
+            className="transition-transform group-hover:translate-x-1"
+          >
+            →
+          </span>
         </Link>
       </div>
     </article>

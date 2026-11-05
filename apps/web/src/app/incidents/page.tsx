@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { getIncidents } from '@/lib/api';
 import IncidentCard from '@/components/incidents/IncidentCard';
@@ -18,7 +19,7 @@ export default async function IncidentsPage() {
 
           <Link
             href="/"
-            className="text-sm font-semibold text-slate-600 transition hover:text-slate-950"
+            className="rounded-sm text-sm font-semibold text-slate-600 transition hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700"
           >
             ← Back home
           </Link>
@@ -43,15 +44,28 @@ export default async function IncidentsPage() {
               confirmation.
             </p>
 
-            <div className="mt-8 inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700">
+            <div
+              className="mt-8 inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+              aria-live="polite"
+            >
               {incidents.length}{' '}
-              {incidents.length === 1 ? 'verified incident' : 'verified incidents'}
+              {incidents.length === 1
+                ? 'publicly approved incident'
+                : 'publicly approved incidents'}
             </div>
+
+            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">
+              Every incident displayed here has passed verification and
+              received approval for public sharing.
+            </p>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-6 py-14 lg:px-8 lg:py-20">
+      <section
+        className="mx-auto max-w-7xl px-6 py-14 lg:px-8 lg:py-20"
+        aria-label="Publicly approved incident reports"
+      >
         {incidents.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {incidents.map((incident) => (
@@ -99,6 +113,14 @@ export default async function IncidentsPage() {
               <span>Corroborating information</span>
               <span>Responsible public reporting</span>
             </div>
+
+            <Link
+              href="/"
+              className="mt-8 inline-flex items-center gap-2 rounded-sm text-sm font-semibold text-emerald-300 transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-300"
+            >
+              Return to STAND Network
+              <span aria-hidden="true">→</span>
+            </Link>
           </div>
         </div>
       </section>
