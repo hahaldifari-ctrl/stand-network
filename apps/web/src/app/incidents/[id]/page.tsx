@@ -19,13 +19,19 @@ function formatDate(value?: string | null) {
     return 'Date not recorded';
   }
 
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Date not recorded';
+  }
+
   return new Intl.DateTimeFormat('en-NG', {
     dateStyle: 'long',
-  }).format(new Date(value));
+  }).format(date);
 }
 
 function formatLabel(value?: string | null) {
-  if (!value) {
+  if (!value?.trim()) {
     return 'Not recorded';
   }
 
@@ -132,14 +138,14 @@ export default async function IncidentDetailPage({
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-8">
           <Link
             href="/"
-            className="text-sm font-bold tracking-[0.18em] text-slate-950"
+            className="rounded-sm text-sm font-bold tracking-[0.18em] text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-4"
           >
             STAND NETWORK
           </Link>
 
           <Link
             href="/incidents"
-            className="text-sm font-semibold text-slate-600 transition hover:text-slate-950"
+            className="rounded-sm text-sm font-semibold text-slate-600 transition hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-4"
           >
             ← Back to verified incidents
           </Link>
@@ -151,7 +157,11 @@ export default async function IncidentDetailPage({
           <div className="max-w-4xl">
             <div className="mb-6 flex flex-wrap items-center gap-3">
               <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-emerald-800">
-                Verified incident
+                Verified
+              </span>
+
+              <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-blue-800">
+                Approved for public sharing
               </span>
 
               <span className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
@@ -162,10 +172,6 @@ export default async function IncidentDetailPage({
             <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
               {incident.title}
             </h1>
-
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">
-              {incident.description}
-            </p>
 
             <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -217,19 +223,27 @@ export default async function IncidentDetailPage({
             </div>
           </section>
 
-          <EvidenceViewer evidence={evidence} evidenceUnavailable={evidenceUnavailable} />
+          <EvidenceViewer
+            evidence={evidence}
+            evidenceUnavailable={evidenceUnavailable}
+          />
+
           <section>
             <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-7">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
-                Verification status
+                Verification and publication status
               </p>
 
               <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">
-                Publicly shared only after review
+                Reviewed before public sharing
               </h2>
 
               <p className="mt-4 leading-7 text-slate-700">
-                This incident has passed STAND Network&apos;s incident verification review and has separately received approval for public display. Reviewer notes and confidential source details are not included in this public record.
+                This incident has passed STAND Network&apos;s incident
+                verification review and has separately received approval for
+                public display. Verification and publication approval are
+                distinct review decisions. Reviewer notes and confidential
+                source details are not included in this public record.
               </p>
             </div>
           </section>
@@ -320,22 +334,30 @@ export default async function IncidentDetailPage({
             </p>
 
             {impacts.length > 0 ? (
-              <div className="mt-5 space-y-3">
-                {impacts.map((impact) => (
-                  <div
-                    key={impact.label}
-                    className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-4"
-                  >
-                    <span className="text-sm font-medium text-slate-600">
-                      {impact.label}
-                    </span>
+              <>
+                <div className="mt-5 space-y-3">
+                  {impacts.map((impact) => (
+                    <div
+                      key={impact.label}
+                      className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-4"
+                    >
+                      <span className="text-sm font-medium text-slate-600">
+                        {impact.label}
+                      </span>
 
-                    <span className="text-lg font-bold text-slate-950">
-                      {impact.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                      <span className="text-lg font-bold text-slate-950">
+                        {impact.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="mt-5 text-xs leading-6 text-slate-500">
+                  These are the figures recorded in this public report. They
+                  reflect the information available to STAND at the time of
+                  publication and may change as further details are verified.
+                </p>
+              </>
             ) : (
               <p className="mt-5 text-sm leading-6 text-slate-600">
                 No quantified impact figures are currently included in the
@@ -372,7 +394,7 @@ export default async function IncidentDetailPage({
 
             <Link
               href="/"
-              className="mt-6 inline-flex items-center font-semibold text-white transition hover:text-emerald-300"
+              className="mt-6 inline-flex items-center rounded-sm font-semibold text-white transition hover:text-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-4 focus-visible:ring-offset-slate-950"
             >
               Find your way to stand →
             </Link>
@@ -384,9 +406,7 @@ export default async function IncidentDetailPage({
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between lg:px-8">
           <p>STAND Network public incident record</p>
 
-          <p>
-            Last updated {formatDate(incident.updatedAt)}
-          </p>
+          <p>Last updated {formatDate(incident.updatedAt)}</p>
         </div>
       </footer>
     </main>
