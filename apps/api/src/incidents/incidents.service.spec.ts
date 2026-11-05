@@ -403,6 +403,18 @@ describe('IncidentsService', () => {
         'VERIFIER',
       );
 
+      expect(tx.verificationReview.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          decision: VerificationDecision.VERIFIED,
+          notes: dto.notes,
+          incidentId: 'incident-1',
+          reviewerId: 'reviewer-1',
+        }),
+      });
+
+      const incidentUpdate = tx.incident.update.mock.calls[0][0];
+      expect(incidentUpdate.data).not.toHaveProperty('verificationSummary');
+
       expect(tx.incident.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'incident-1' },
@@ -410,7 +422,7 @@ describe('IncidentsService', () => {
             status: IncidentStatus.VERIFIED,
             publicationStatus: IncidentPublicationStatus.PENDING,
             confidenceLevel: ConfidenceLevel.VERIFIED,
-            verificationSummary: dto.notes,
+
           }),
         }),
       );
@@ -517,6 +529,9 @@ describe('IncidentsService', () => {
             status: IncidentStatus.VERIFIED,
             publicationStatus: IncidentPublicationStatus.APPROVED,
           },
+          select: expect.not.objectContaining({
+            verificationSummary: true,
+          }),
         }),
       );
     });

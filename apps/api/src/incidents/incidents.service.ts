@@ -84,7 +84,6 @@ export class IncidentsService {
         religiousContext: true,
         status: true,
         confidenceLevel: true,
-        verificationSummary: true,
         affectedPeopleCount: true,
         peopleKilled: true,
         peopleAbducted: true,
@@ -425,8 +424,6 @@ export class IncidentsService {
       });
 
       const updateData: Prisma.IncidentUpdateInput = {
-        verificationSummary:
-          dto.notes ?? this.defaultVerificationSummary(dto.decision),
         publicationStatus: IncidentPublicationStatus.PENDING,
       };
 
@@ -630,16 +627,4 @@ export class IncidentsService {
     }
   }
 
-  private defaultVerificationSummary(decision: VerificationDecision) {
-    switch (decision) {
-      case VerificationDecision.VERIFIED:
-        return 'Incident verified by an authorized reviewer.';
-
-      case VerificationDecision.REJECTED:
-        return 'Incident rejected by an authorized reviewer.';
-
-      case VerificationDecision.NEEDS_MORE_INFORMATION:
-        return 'Additional information is required before this incident can be verified.';
-    }
-  }
 }

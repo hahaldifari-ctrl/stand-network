@@ -91,9 +91,7 @@ export interface PublicIncident {
   updatedAt: string;
 }
 
-export interface PublicIncidentDetail extends PublicIncident {
-  verificationSummary?: string | null;
-}
+export type PublicIncidentDetail = PublicIncident;
 
 export interface PublicEvidenceSource {
   name?: string | null;

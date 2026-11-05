@@ -362,8 +362,7 @@ export default async function IncidentDetailPage({
               </h2>
 
               <p className="mt-4 leading-7 text-slate-700">
-                {incident.verificationSummary ??
-                  'This incident has been reviewed and verified for public reporting by the STAND Network verification process.'}
+                This incident has passed STAND Network&apos;s incident verification review and has separately received approval for public display. Reviewer notes and confidential source details are not included in this public record.
               </p>
             </div>
           </section>
