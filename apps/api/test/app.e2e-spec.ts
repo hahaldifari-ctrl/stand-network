@@ -20,7 +20,11 @@ describe('AppController (e2e)', () => {
     return request(app.getHttpServer())
       .get('/')
       .expect(200)
-      .expect('Hello World!');
+      .expect({
+        service: 'stand-api',
+        status: 'ok',
+        version: '0.1.0',
+      });
   });
 
   afterEach(async () => {
